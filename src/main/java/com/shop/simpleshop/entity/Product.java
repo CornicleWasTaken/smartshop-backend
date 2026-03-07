@@ -28,9 +28,12 @@ public class Product {
     @Column(name = "SKU",nullable = false, unique = true)
     private String sku;
 
-    @Column(name = "PRICE")
+    @Column(name = "PRICE",nullable = false)
     private Double price;
 
-    @Column(name = "STOCK_QUANTITY")
+    @Column(name = "STOCK_QUANTITY",nullable = false)
     private Integer stockQuantity;
+
+    @Column(name = "LOW_STOCK_THRESHOLD",nullable = false)
+    private Integer lowStockThreshold;
 }

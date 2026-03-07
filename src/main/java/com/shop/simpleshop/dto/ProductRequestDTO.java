@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ProductRequest {
+public class ProductRequestDTO {
 
     @NotBlank
     private String name;

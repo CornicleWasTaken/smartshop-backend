@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.shop.simpleshop.dto.ProductRequest;
+import com.shop.simpleshop.dto.ProductRequestDTO;
 import com.shop.simpleshop.entity.Product;
 import com.shop.simpleshop.services.ProductService;
 
@@ -31,7 +31,7 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(@Valid @RequestBody ProductRequest request) {
+    public ResponseEntity<Product> create(@Valid @RequestBody ProductRequestDTO request) {
         Product product = mapToEntity(request);
         Product saved = service.create(product);
 
@@ -52,7 +52,7 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public Product update(@PathVariable Long id,
-                          @RequestBody ProductRequest request) {
+                          @RequestBody ProductRequestDTO request) {
 
         Product product = mapToEntity(request);
         return service.update(id, product);
@@ -64,7 +64,7 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    private Product mapToEntity(ProductRequest request) {
+    private Product mapToEntity(ProductRequestDTO request) {
         Product p = new Product();
         p.setName(request.getName());
         p.setSku(request.getSku());
