@@ -1,6 +1,6 @@
-# SimpleShop Backend
+# SmartShop Backend
 
-This is the backend service for SimpleShop, built with Spring Boot and an Oracle Database.
+This is the backend service for SmartShop, built with Spring Boot and an Oracle Database.
 
 ## Prerequisites
 
