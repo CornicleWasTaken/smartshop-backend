@@ -6,24 +6,39 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * DTO for creating and updating products.
+ * Contains validation rules for product information.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 public class ProductRequestDTO {
 
-    @NotBlank
+    /**
+     * Product name - must not be blank
+     */
+    @NotBlank(message = "Product name is required")
     private String name;
 
-    @NotBlank
+    /**
+     * Stock Keeping Unit - unique identifier for the product, must not be blank
+     */
+    @NotBlank(message = "SKU is required")
     private String sku;
 
-    @NotNull
-    @Positive
+    /**
+     * Product price - must be positive (greater than 0)
+     */
+    @NotNull(message = "Price is required")
+    @Positive(message = "Price must be greater than 0")
     private Double price;
 
-    @NotNull
-    @PositiveOrZero
+    /**
+     * Initial stock quantity - must be zero or positive
+     */
+    @NotNull(message = "Stock quantity is required")
+    @PositiveOrZero(message = "Stock quantity cannot be negative")
     private Integer stockQuantity;
-
-    
 }
+
