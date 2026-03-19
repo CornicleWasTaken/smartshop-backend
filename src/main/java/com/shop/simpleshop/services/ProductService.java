@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.shop.simpleshop.entity.Product;
+import com.shop.simpleshop.exceptions.DuplicateProductException;
 import com.shop.simpleshop.exceptions.ProductNotFoundException;
 import com.shop.simpleshop.repository.ProductRepository;
 
@@ -24,44 +25,40 @@ public class ProductService {
 
     /**
      * Creates a new product in the system.
+     * Validates that SKU and name are unique before creating.
      *
      * @param product the product entity to be created
      * @return the saved product with generated ID
+     * @throws DuplicateProductException if a product with the same SKU or name already exists
      */
     public Product create(Product product) {
+        // Validate SKU uniqueness
+        if (repo.findBySku(product.getSku()).isPresent()) {
+            throw new DuplicateProductException(
+                    "A product with SKU '" + product.getSku() + "' already exists");
+        }
+
+        // Validate name uniqueness
+        if (repo.findByName(product.getName()).isPresent()) {
+            throw new DuplicateProductException(
+                    "A product with name '" + product.getName() + "' already exists");
+        }
+
         return repo.save(product);
     }
 
-    /**
-     * Retrieves all products with pagination support.
-     *
-     * @param pageable pagination information (page number, size, sort)
-     * @return a page of products
-     */
+    // ...existing code...
     public Page<Product> getAll(Pageable pageable) {
         return repo.findAll(pageable);
     }
 
-    /**
-     * Retrieves a single product by its ID.
-     *
-     * @param id the product ID
-     * @return the product entity
-     * @throws ProductNotFoundException if product with given ID doesn't exist
-     */
+    // ...existing code...
     public Product getById(Long id) {
         return repo.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
     }
 
-    /**
-     * Updates an existing product with new information.
-     *
-     * @param id the product ID to update
-     * @param updated the product entity with updated information
-     * @return the updated product
-     * @throws ProductNotFoundException if product with given ID doesn't exist
-     */
+    // ...existing code...
     public Product update(Long id, Product updated) {
         Product existing = getById(id);
 
@@ -73,12 +70,7 @@ public class ProductService {
         return repo.save(existing);
     }
 
-    /**
-     * Deletes a product from the system.
-     *
-     * @param id the product ID to delete
-     * @throws ProductNotFoundException if product with given ID doesn't exist
-     */
+    // ...existing code...
     public void delete(Long id) {
         repo.delete(getById(id));
     }
