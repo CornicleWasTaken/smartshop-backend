@@ -40,5 +40,10 @@ public class ProductRequestDTO {
     @NotNull(message = "Stock quantity is required")
     @PositiveOrZero(message = "Stock quantity cannot be negative")
     private Integer stockQuantity;
+
+    /**
+     * Product category - optional; defaults to "Uncategorized" when blank
+     */
+    private String category;
 }
 

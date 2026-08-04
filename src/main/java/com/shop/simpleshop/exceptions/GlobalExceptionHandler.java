@@ -99,6 +99,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles ProductDeleteConflictException (409 Conflict)
+     */
+    @ExceptionHandler(ProductDeleteConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handleProductDeleteConflict(
+            ProductDeleteConflictException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("PRODUCT_DELETE_CONFLICT")
+                .message(ex.getMessage())
+                .details("The product is referenced by sales or inventory transactions and cannot be deleted")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(errorResponse);
+    }
+
+    /**
      * Handles InvalidInputException (400 Bad Request)
      */
     @ExceptionHandler(InvalidInputException.class)
@@ -115,6 +135,26 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles ExpenseNotFoundException (404 Not Found)
+     */
+    @ExceptionHandler(ExpenseNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleExpenseNotFound(
+            ExpenseNotFoundException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("EXPENSE_NOT_FOUND")
+                .message(ex.getMessage())
+                .details("The requested expense does not exist in the system")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(errorResponse);
     }
 
@@ -284,6 +324,46 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles InvalidCredentialsException (401 Unauthorized)
+     */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidCredentials(
+            InvalidCredentialsException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("INVALID_CREDENTIALS")
+                .message(ex.getMessage())
+                .details("The provided username/email or password is incorrect")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles DuplicateUserException (409 Conflict)
+     */
+    @ExceptionHandler(DuplicateUserException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDuplicateUser(
+            DuplicateUserException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("DUPLICATE_USER")
+                .message(ex.getMessage())
+                .details("A user with this username or email already exists")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
                 .body(errorResponse);
     }
 

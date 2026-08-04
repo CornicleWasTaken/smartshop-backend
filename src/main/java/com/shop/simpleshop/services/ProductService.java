@@ -7,8 +7,11 @@ import org.springframework.stereotype.Service;
 
 import com.shop.simpleshop.entity.Product;
 import com.shop.simpleshop.exceptions.DuplicateProductException;
+import com.shop.simpleshop.exceptions.ProductDeleteConflictException;
 import com.shop.simpleshop.exceptions.ProductNotFoundException;
+import com.shop.simpleshop.repository.InventoryTransactionRepository;
 import com.shop.simpleshop.repository.ProductRepository;
+import com.shop.simpleshop.repository.SaleItemRepository;
 
 /**
  * Service for managing product CRUD operations.
@@ -18,9 +21,15 @@ import com.shop.simpleshop.repository.ProductRepository;
 public class ProductService {
 
     private final ProductRepository repo;
+    private final SaleItemRepository saleItemRepository;
+    private final InventoryTransactionRepository inventoryTransactionRepository;
 
-    public ProductService(ProductRepository repo) {
+    public ProductService(ProductRepository repo,
+                          SaleItemRepository saleItemRepository,
+                          InventoryTransactionRepository inventoryTransactionRepository) {
         this.repo = repo;
+        this.saleItemRepository = saleItemRepository;
+        this.inventoryTransactionRepository = inventoryTransactionRepository;
     }
 
     /**
@@ -67,11 +76,37 @@ public class ProductService {
         existing.setPrice(updated.getPrice());
         existing.setStockQuantity(updated.getStockQuantity());
 
+        // Only update category when provided, to avoid clobbering an existing value
+        // on partial updates where the field is omitted.
+        if (updated.getCategory() != null) {
+            existing.setCategory(normalizeCategory(updated.getCategory()));
+        }
+
         return repo.save(existing);
     }
 
     // ...existing code...
     public void delete(Long id) {
-        repo.delete(getById(id));
+        Product product = getById(id);
+
+        boolean referencedInSales = saleItemRepository.existsByProduct_ProductId(id);
+        boolean referencedInInventory = inventoryTransactionRepository.existsByProduct_ProductId(id);
+
+        if (referencedInSales || referencedInInventory) {
+            throw new ProductDeleteConflictException(id);
+        }
+
+        repo.delete(product);
+    }
+
+    /**
+     * Normalizes a category value to a non-blank string.
+     * Blank/null values fall back to "Uncategorized".
+     */
+    public static String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return "Uncategorized";
+        }
+        return category.trim();
     }
 }

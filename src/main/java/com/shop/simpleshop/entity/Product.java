@@ -35,6 +35,8 @@ public class Product {
     private Integer stockQuantity;
     @Column(name = "LOW_STOCK_THRESHOLD", nullable = false)
     private Integer lowStockThreshold;
+    @Column(name = "CATEGORY", nullable = true)
+    private String category;
 }
 
 

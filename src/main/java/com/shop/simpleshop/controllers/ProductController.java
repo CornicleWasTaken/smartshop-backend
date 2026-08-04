@@ -122,6 +122,7 @@ public class ProductController {
         p.setPrice(request.getPrice());
         p.setStockQuantity(request.getStockQuantity());
         p.setLowStockThreshold(request.getStockQuantity() / 2); // Set threshold as 50% of initial stock
+        p.setCategory(ProductService.normalizeCategory(request.getCategory()));
         return p;
     }
 }
