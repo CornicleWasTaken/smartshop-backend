@@ -10,6 +10,7 @@ import com.shop.simpleshop.inventory.TransactionType;
 import com.shop.simpleshop.repository.InventoryTransactionRepository;
 import com.shop.simpleshop.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -65,6 +66,7 @@ public class InventoryService {
      * @throws InvalidInventoryTransactionException if quantity is invalid
      * @throws InsufficientStockException if OUT transaction would result in negative stock
      */
+    @Transactional
     public void processTransaction(InventoryTransactionRequestDTO request) {
 
         // Validate request parameters

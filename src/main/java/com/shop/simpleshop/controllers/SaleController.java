@@ -2,6 +2,7 @@ package com.shop.simpleshop.controllers;
 
 import com.shop.simpleshop.dto.SaleRequestDTO;
 import com.shop.simpleshop.dto.SaleResponseDTO;
+import com.shop.simpleshop.dto.sale.VoidRequest;
 import com.shop.simpleshop.services.SaleService;
 import com.shop.simpleshop.util.SaleQueryParams;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +30,7 @@ public class SaleController {
 
     @PostMapping
     @Operation(summary = "Create a new sale")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SaleResponseDTO> createSale(@Valid @RequestBody SaleRequestDTO request) {
         SaleResponseDTO sale = service.createSale(request);
 
@@ -62,5 +65,24 @@ public class SaleController {
     public ResponseEntity<Page<SaleResponseDTO>> getAllSales(Pageable pageable) {
         Page<SaleResponseDTO> sales = service.getAllSales(pageable);
         return ResponseEntity.ok(sales);
+    }
+
+    @PostMapping("/{id}/items/{itemId}/void")
+    @Operation(summary = "Void a single line item of a completed sale")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or hasAuthority('OVERRIDE')")
+    public ResponseEntity<SaleResponseDTO> voidItem(@PathVariable("id") Long saleId,
+                                                    @PathVariable("itemId") Long itemId,
+                                                    @Valid @RequestBody(required = false) VoidRequest request) {
+        return ResponseEntity.ok(service.voidItem(saleId, itemId,
+                request == null ? null : request.reason()));
+    }
+
+    @PostMapping("/{id}/void")
+    @Operation(summary = "Void a completed sale and reverse its stock")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or hasAuthority('OVERRIDE')")
+    public ResponseEntity<SaleResponseDTO> voidSale(@PathVariable("id") Long saleId,
+                                                    @Valid @RequestBody(required = false) VoidRequest request) {
+        return ResponseEntity.ok(service.voidSale(saleId,
+                request == null ? null : request.reason()));
     }
 }

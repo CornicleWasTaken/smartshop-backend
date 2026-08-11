@@ -5,11 +5,15 @@ import com.shop.simpleshop.dto.auth.AuthUserDTO;
 import com.shop.simpleshop.dto.auth.LoginRequestDTO;
 import com.shop.simpleshop.dto.auth.RefreshResponseDTO;
 import com.shop.simpleshop.dto.auth.RegisterRequestDTO;
+import com.shop.simpleshop.dto.auth.VerifyManagerRequest;
+import com.shop.simpleshop.dto.auth.VerifyManagerResponseDTO;
 import com.shop.simpleshop.entity.User;
 import com.shop.simpleshop.exceptions.DuplicateUserException;
+import com.shop.simpleshop.exceptions.InsufficientRoleException;
 import com.shop.simpleshop.exceptions.InvalidCredentialsException;
 import com.shop.simpleshop.exceptions.InvalidInputException;
 import com.shop.simpleshop.repository.UserRepository;
+import com.shop.simpleshop.security.AppRole;
 import com.shop.simpleshop.security.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -107,6 +111,30 @@ public class AuthService {
         return toAuthUserDTO(user);
     }
 
+    /**
+     * Grants a short-lived manager override: verifies that the current user is
+     * a MANAGER/ADMIN and that the supplied password matches, then issues a fresh
+     * access token carrying an {@code override} claim. Cashier sessions are
+     * rejected with {@link InsufficientRoleException}.
+     *
+     * @param username the currently authenticated user
+     * @param request  the password to verify
+     */
+    public VerifyManagerResponseDTO verifyManager(String username, VerifyManagerRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(InvalidCredentialsException::new);
+
+        if (!AppRole.fromDb(user.getRole()).isElevated()) {
+            throw new InsufficientRoleException("Manager credentials required");
+        }
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+
+        return new VerifyManagerResponseDTO(
+                jwtService.generateOverrideAccessToken(user, user.getUsername()));
+    }
+
     public void logout(HttpServletResponse response) {
         clearRefreshCookie(response);
     }
@@ -122,7 +150,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
-                .role(user.getRole())
+                .role(AppRole.fromDb(user.getRole()).name())
                 .build();
     }
 

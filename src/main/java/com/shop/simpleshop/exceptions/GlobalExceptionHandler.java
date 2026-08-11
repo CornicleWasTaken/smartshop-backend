@@ -4,6 +4,7 @@ import com.shop.simpleshop.dto.ErrorResponseDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -364,6 +365,108 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles AccessDeniedException (403 Forbidden), raised by method-security
+     * when {@code @PreAuthorize} rejects a request. Also catches
+     * {@code AuthorizationDeniedException} (Spring Security 7) which extends it.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("ACCESS_DENIED")
+                .message("You do not have permission to perform this action")
+                .details(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles InsufficientRoleException (403 Forbidden).
+     */
+    @ExceptionHandler(InsufficientRoleException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInsufficientRole(
+            InsufficientRoleException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("INSUFFICIENT_ROLE")
+                .message(ex.getMessage())
+                .details("This action requires a manager or admin role")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles ForbiddenActionException (403 Forbidden).
+     */
+    @ExceptionHandler(ForbiddenActionException.class)
+    public ResponseEntity<ErrorResponseDTO> handleForbiddenAction(
+            ForbiddenActionException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("FORBIDDEN_ACTION")
+                .message(ex.getMessage())
+                .details("The requested action is not allowed in the current state")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles DrawerAlreadyOpenException (409 Conflict).
+     */
+    @ExceptionHandler(DrawerAlreadyOpenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDrawerAlreadyOpen(
+            DrawerAlreadyOpenException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("DRAWER_ALREADY_OPEN")
+                .message(ex.getMessage())
+                .details("Close the open drawer session before opening a new one")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(errorResponse);
+    }
+
+    /**
+     * Handles UserNotFoundException (404 Not Found)
+     */
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUserNotFound(
+            UserNotFoundException ex, HttpServletRequest request) {
+
+        ErrorResponseDTO errorResponse = ErrorResponseDTO.builder()
+                .errorCode("USER_NOT_FOUND")
+                .message(ex.getMessage())
+                .details("The requested user does not exist in the system")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(errorResponse);
     }
 

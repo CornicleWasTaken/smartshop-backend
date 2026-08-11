@@ -2,14 +2,20 @@ package com.shop.simpleshop.services;
 
 import com.shop.simpleshop.dto.*;
 import com.shop.simpleshop.entity.Product;
+import com.shop.simpleshop.exceptions.ForbiddenActionException;
 import com.shop.simpleshop.exceptions.InsufficientStockException;
 import com.shop.simpleshop.exceptions.InvalidInputException;
+import com.shop.simpleshop.exceptions.SaleItemNotFoundException;
 import com.shop.simpleshop.exceptions.SaleNotFoundException;
+import com.shop.simpleshop.inventory.TransactionType;
 import com.shop.simpleshop.repository.ProductRepository;
 import com.shop.simpleshop.repository.SaleRepository;
+import com.shop.simpleshop.repository.TransactionVoidRepository;
 import com.shop.simpleshop.sales.Sale;
 import com.shop.simpleshop.sales.SaleItem;
 import com.shop.simpleshop.sales.SaleStatus;
+import com.shop.simpleshop.sales.TransactionVoid;
+import com.shop.simpleshop.security.Operation;
 import com.shop.simpleshop.util.SaleQueryParams;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,12 +32,24 @@ import java.util.Set;
 @Service
 public class SaleService {
 
+    private static final String VOID_REASON = "Void";
+
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
+    private final TransactionVoidRepository transactionVoidRepository;
+    private final AuditLogService auditLogService;
 
-    public SaleService(SaleRepository saleRepository, ProductRepository productRepository) {
+    public SaleService(SaleRepository saleRepository,
+                       ProductRepository productRepository,
+                       InventoryService inventoryService,
+                       TransactionVoidRepository transactionVoidRepository,
+                       AuditLogService auditLogService) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
+        this.inventoryService = inventoryService;
+        this.transactionVoidRepository = transactionVoidRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -94,6 +112,89 @@ public class SaleService {
     @Transactional(readOnly = true)
     public Page<SaleResponseDTO> getAllSales(Pageable pageable) {
         return saleRepository.findAll(pageable).map(this::convertToResponseDTO);
+    }
+
+    /**
+     * Voids a single line item of a completed sale: reverses the stock via an
+     * {@link TransactionType#IN} inventory transaction, subtracts the line total,
+     * and records a {@link TransactionVoid} plus an audit entry. The {@link SaleItem}
+     * itself is kept (reports and the sale detail still reference it).
+     */
+    @Transactional
+    public SaleResponseDTO voidItem(Long saleId, Long itemId, String reason) {
+        Sale sale = findVoidableSale(saleId);
+        SaleItem item = sale.getItems().stream()
+                .filter(i -> i.getSaleItemId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new SaleItemNotFoundException(itemId));
+
+        reverseStock(item);
+        sale.setTotalAmount(sale.getTotalAmount().subtract(item.getLineTotal()));
+        if (sale.getTotalAmount().signum() < 0) {
+            sale.setTotalAmount(BigDecimal.ZERO);
+        }
+        Sale saved = saleRepository.save(sale);
+
+        recordVoid(saved, item, reason);
+        auditLogService.recordCurrentUser(Operation.VOID, "SALE_ITEM", itemId);
+        return convertToResponseDTO(saved);
+    }
+
+    /**
+     * Voids a whole completed sale: reverses stock for every line item, zeroes the
+     * total, cancels the sale, and records a single {@link TransactionVoid} (no sale
+     * item) plus an audit entry.
+     */
+    @Transactional
+    public SaleResponseDTO voidSale(Long saleId, String reason) {
+        Sale sale = findVoidableSale(saleId);
+
+        for (SaleItem item : sale.getItems()) {
+            reverseStock(item);
+        }
+        sale.setStatus(SaleStatus.CANCELLED);
+        sale.setTotalAmount(BigDecimal.ZERO);
+        Sale saved = saleRepository.save(sale);
+
+        recordVoid(saved, null, reason);
+        auditLogService.recordCurrentUser(Operation.VOID, "SALE", saleId);
+        return convertToResponseDTO(saved);
+    }
+
+    private Sale findVoidableSale(Long saleId) {
+        Sale sale = saleRepository.findById(saleId)
+                .orElseThrow(() -> new SaleNotFoundException(saleId));
+        if (sale.getStatus() != SaleStatus.COMPLETED) {
+            throw new ForbiddenActionException(
+                    "Only completed sales can be voided (sale " + saleId + " is " + sale.getStatus() + ")");
+        }
+        return sale;
+    }
+
+    private void reverseStock(SaleItem item) {
+        InventoryTransactionRequestDTO reversal = new InventoryTransactionRequestDTO();
+        reversal.setProductId(item.getProduct().getProductId());
+        reversal.setQuantity(item.getQuantity());
+        reversal.setType(TransactionType.IN);
+        reversal.setReason(VOID_REASON);
+        inventoryService.processTransaction(reversal);
+    }
+
+    private void recordVoid(Sale sale, SaleItem item, String reason) {
+        TransactionVoid transactionVoid = new TransactionVoid();
+        transactionVoid.setSale(sale);
+        transactionVoid.setSaleItem(item);
+        transactionVoid.setCashier(securityContextName());
+        transactionVoid.setReason(reason == null ? VOID_REASON : reason);
+        transactionVoid.setOverrideBy(auditLogService.currentOverrideBy());
+        transactionVoid.setVoidedAt(LocalDateTime.now());
+        transactionVoidRepository.save(transactionVoid);
+    }
+
+    private String securityContextName() {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : "system";
     }
 
     private void validateNoDuplicateProducts(List<SaleItemRequestDTO> items) {

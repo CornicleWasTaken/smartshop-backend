@@ -5,6 +5,8 @@ import com.shop.simpleshop.dto.auth.AuthUserDTO;
 import com.shop.simpleshop.dto.auth.LoginRequestDTO;
 import com.shop.simpleshop.dto.auth.RefreshResponseDTO;
 import com.shop.simpleshop.dto.auth.RegisterRequestDTO;
+import com.shop.simpleshop.dto.auth.VerifyManagerRequest;
+import com.shop.simpleshop.dto.auth.VerifyManagerResponseDTO;
 import com.shop.simpleshop.services.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +52,18 @@ public class AuthController {
     @Operation(summary = "Get the currently authenticated user")
     public ResponseEntity<AuthUserDTO> me(Authentication authentication) {
         return ResponseEntity.ok(authService.getCurrentUser(authentication.getName()));
+    }
+
+    /**
+     * Grants a short-lived manager override. Callable by any authenticated user,
+     * but only succeeds for MANAGER/ADMIN sessions (see {@code AuthService.verifyManager}).
+     */
+    @PostMapping("/verify-manager")
+    @Operation(summary = "Verify manager credentials and issue a short-lived override token")
+    public ResponseEntity<VerifyManagerResponseDTO> verifyManager(
+            @Valid @RequestBody VerifyManagerRequest request,
+            Authentication authentication) {
+        return ResponseEntity.ok(authService.verifyManager(authentication.getName(), request));
     }
 
     @PostMapping("/refresh")

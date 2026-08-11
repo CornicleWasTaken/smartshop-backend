@@ -10,6 +10,7 @@ import com.shop.simpleshop.util.DateUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -109,6 +110,7 @@ public class ExpenseController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete an expense")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or hasAuthority('OVERRIDE')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         expenseService.delete(id);
         return ResponseEntity.noContent().build();

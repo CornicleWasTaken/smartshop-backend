@@ -11,6 +11,7 @@ import com.shop.simpleshop.exceptions.ExpenseNotFoundException;
 import com.shop.simpleshop.expenses.ExpenseStatus;
 import com.shop.simpleshop.repository.ExpenseRepository;
 import com.shop.simpleshop.repository.ExpenseSpecifications;
+import com.shop.simpleshop.security.Operation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,9 +38,11 @@ public class ExpenseService {
     private static final int TOP_EXPENSES_LIMIT = 10;
 
     private final ExpenseRepository expenseRepository;
+    private final AuditLogService auditLogService;
 
-    public ExpenseService(ExpenseRepository expenseRepository) {
+    public ExpenseService(ExpenseRepository expenseRepository, AuditLogService auditLogService) {
         this.expenseRepository = expenseRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +96,7 @@ public class ExpenseService {
     public void delete(Long id) {
         Expense expense = findOrThrow(id);
         expenseRepository.delete(expense);
+        auditLogService.recordCurrentUser(Operation.DELETE, "EXPENSE", id);
     }
 
     @Transactional(readOnly = true)

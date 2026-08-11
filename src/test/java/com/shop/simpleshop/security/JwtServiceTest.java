@@ -14,7 +14,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        jwtService = new JwtService("unit-test-secret-unit-test-secret-1234567890", 900_000L, 604_800_000L);
+        jwtService = new JwtService("unit-test-secret-unit-test-secret-1234567890", 900_000L, 604_800_000L, 10L);
     }
 
     private User user(Long id, String role) {
@@ -59,5 +59,34 @@ class JwtServiceTest {
 
         assertThatThrownBy(() -> jwtService.parseUserId(tampered))
                 .isInstanceOf(JwtException.class);
+    }
+
+    @Test
+    void overrideToken_carriesOverrideAndOverrideByClaims() {
+        String token = jwtService.generateOverrideAccessToken(user(42L, "MANAGER"), "manager1");
+
+        assertThat(jwtService.parseUserId(token)).isEqualTo(42L);
+        assertThat(jwtService.parseRole(token)).isEqualTo("MANAGER");
+        assertThat(jwtService.parseOverrideBy(token)).isEqualTo("manager1");
+        // Override claim is an epoch-millis expiry a short time in the future.
+        assertThat(jwtService.parseOverrideExpiry(token))
+                .isNotNull()
+                .isAfter(java.time.Instant.now().minusSeconds(5));
+    }
+
+    @Test
+    void plainAccessToken_hasNoOverrideClaims() {
+        String token = jwtService.generateAccessToken(user(42L, "MANAGER"));
+
+        assertThat(jwtService.parseOverrideExpiry(token)).isNull();
+        assertThat(jwtService.parseOverrideBy(token)).isNull();
+    }
+
+    @Test
+    void refreshToken_hasNoOverrideClaims() {
+        String token = jwtService.generateRefreshToken(user(42L, "MANAGER"));
+
+        assertThat(jwtService.parseOverrideExpiry(token)).isNull();
+        assertThat(jwtService.parseOverrideBy(token)).isNull();
     }
 }

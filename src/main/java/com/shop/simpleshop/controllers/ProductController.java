@@ -21,6 +21,7 @@ import com.shop.simpleshop.entity.Product;
 import com.shop.simpleshop.services.ProductService;
 
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * REST Controller for managing products.
@@ -103,6 +104,7 @@ public class ProductController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a product")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER') or hasAuthority('OVERRIDE')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

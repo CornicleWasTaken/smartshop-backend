@@ -12,6 +12,7 @@ import com.shop.simpleshop.exceptions.ProductNotFoundException;
 import com.shop.simpleshop.repository.InventoryTransactionRepository;
 import com.shop.simpleshop.repository.ProductRepository;
 import com.shop.simpleshop.repository.SaleItemRepository;
+import com.shop.simpleshop.security.Operation;
 
 /**
  * Service for managing product CRUD operations.
@@ -23,13 +24,16 @@ public class ProductService {
     private final ProductRepository repo;
     private final SaleItemRepository saleItemRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final AuditLogService auditLogService;
 
     public ProductService(ProductRepository repo,
                           SaleItemRepository saleItemRepository,
-                          InventoryTransactionRepository inventoryTransactionRepository) {
+                          InventoryTransactionRepository inventoryTransactionRepository,
+                          AuditLogService auditLogService) {
         this.repo = repo;
         this.saleItemRepository = saleItemRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
+        this.auditLogService = auditLogService;
     }
 
     /**
@@ -97,6 +101,7 @@ public class ProductService {
         }
 
         repo.delete(product);
+        auditLogService.recordCurrentUser(Operation.DELETE, "PRODUCT", id);
     }
 
     /**

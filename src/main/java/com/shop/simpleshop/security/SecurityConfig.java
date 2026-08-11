@@ -40,12 +40,22 @@ public class SecurityConfig {
                         "/api/auth/logout").permitAll()
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated())
-            .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {
-                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                res.setContentType("application/json");
-                res.getWriter().write(
-                        "{\"errorCode\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
-            }))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    res.setContentType("application/json");
+                    res.getWriter().write(
+                            "{\"errorCode\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
+                })
+                // Fallback for any denial that does NOT surface at the controller advice
+                // (method-security denials do reach the advice; this keeps the 403 JSON shape
+                // consistent regardless of which layer rejects the request).
+                .accessDeniedHandler((req, res, e) -> {
+                    res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    res.setContentType("application/json");
+                    res.getWriter().write(
+                            "{\"errorCode\":\"ACCESS_DENIED\",\"message\":\"You do not have permission to perform this action\"}");
+                }))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

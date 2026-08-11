@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Reads the {@code Authorization: Bearer <token>} header, validates the JWT,
@@ -47,8 +47,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Long userId = jwtService.parseUserId(token);
             userRepository.findById(userId).ifPresent(user -> {
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+                var authorities = new ArrayList<SimpleGrantedAuthority>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + AppRole.fromDb(user.getRole()).name()));
+                // The OVERRIDE authority travels in the token (not the DB user), so it is
+                // validated against the token's override claim here rather than the role.
+                java.time.Instant overrideExpiry = jwtService.parseOverrideExpiry(token);
+                if (overrideExpiry != null && overrideExpiry.isAfter(java.time.Instant.now())) {
+                    authorities.add(new SimpleGrantedAuthority("OVERRIDE"));
+                }
                 var authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), null, authorities);
+                // Carry the overrider's username (if any) so service code can record it for audit.
+                if (jwtService.parseOverrideBy(token) != null) {
+                    authentication.setDetails(jwtService.parseOverrideBy(token));
+                }
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             });
         } catch (JwtException | IllegalArgumentException ex) {
